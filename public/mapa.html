@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CADENA — Mapa de Fenómenos</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <style>
+    /* ── Variables y reset ───────────────────────────────────────── */
+    :root {
+      --cadena-dark: #1C3A6B;
+      --cadena-mid:  #2D5F8A;
+      --font-main:   'Segoe UI', Arial, sans-serif;
+      --nav-h:       48px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-main);
+      font-size: 13px;
+      background: #1a1a2e;
+      color: #1a1a1a;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Barra de navegación ─────────────────────────────────────── */
+    .nav-bar {
+      flex-shrink: 0;
+      height: var(--nav-h);
+      background: var(--cadena-dark);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.5);
+      z-index: 1000;
+      gap: 12px;
+    }
+
+    .nav-brand {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      white-space: nowrap;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: var(--font-main);
+      transition: opacity .15s, transform .1s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn:active  { transform: scale(.97); }
+    .btn:hover   { opacity: .85; }
+
+    .btn-secondary { background: #546e7a; color: #fff; }
+    .btn-primary   { background: #1976D2; color: #fff; }
+
+    .timestamp {
+      font-size: 11.5px;
+      color: #b0c4de;
+      white-space: nowrap;
+    }
+
+    /* ── Layout principal ────────────────────────────────────────── */
+    .main-layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Mapa ────────────────────────────────────────────────────── */
+    #mapa {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* ── Panel lateral ───────────────────────────────────────────── */
+    .side-panel {
+      width: 320px;
+      flex-shrink: 0;
+      background: #f5f7fa;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-left: 2px solid #c5cdd8;
+    }
+
+    .panel-section {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .panel-section + .panel-section {
+      border-top: 2px solid #c5cdd8;
+    }
+
+    .panel-title {
+      flex-shrink: 0;
+      background: var(--cadena-dark);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-badge {
+      background: rgba(255,255,255,.22);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+      margin-left: auto;
+    }
+
+    .panel-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+
+    /* ── Items de sismos ─────────────────────────────────────────── */
+    .sismo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 7px 10px;
+      border-bottom: 1px solid #e0e5ec;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .sismo-item:hover { background: #dce8f5; }
+
+    .mag-badge {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .sismo-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sismo-place {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #1a1a1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sismo-meta {
+      font-size: 10.5px;
+      color: #607d8b;
+      margin-top: 2px;
+    }
+
+    /* ── Items de ciclones ───────────────────────────────────────── */
+    .ciclon-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e0e5ec;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .ciclon-item:hover { background: #dce8f5; }
+
+    .ciclon-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .ciclon-info { flex: 1; min-width: 0; }
+
+    .ciclon-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+
+    .ciclon-meta {
+      font-size: 11px;
+      color: #607d8b;
+      margin-top: 2px;
+    }
+
+    .no-data {
+      padding: 18px 12px;
+      color: #78909c;
+      font-size: 12px;
+      font-style: italic;
+      text-align: center;
+    }
+
+    /* ── Leyenda del mapa (Leaflet control) ──────────────────────── */
+    .map-legend {
+      background: rgba(255,255,255,.94);
+      border-radius: 6px;
+      padding: 10px 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      font-family: var(--font-main);
+      font-size: 11.5px;
+      min-width: 150px;
+    }
+
+    .legend-title {
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--cadena-dark);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 4px;
+    }
+
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1.5px solid rgba(0,0,0,.2);
+    }
+
+    .legend-sep {
+      margin: 6px 0;
+      border: none;
+      border-top: 1px solid #ddd;
+    }
+
+    /* ── Spinner de carga ────────────────────────────────────────── */
+    #loader {
+      position: absolute;
+      top: calc(var(--nav-h) + 12px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(28,58,107,.9);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 2000;
+      display: none;
+      pointer-events: none;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 780px) {
+      .side-panel { width: 260px; }
+    }
+    @media (max-width: 580px) {
+      .main-layout { flex-direction: column; }
+      .side-panel {
+        width: 100%;
+        height: 220px;
+        border-left: none;
+        border-top: 2px solid #c5cdd8;
+        flex-direction: row;
+      }
+      .panel-section { flex: 1; }
+      #mapa { flex: none; height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Barra de navegación ──────────────────────────────────────── -->
+<nav class="nav-bar">
+  <span class="nav-brand">🛡 CADENA — Mapa de Fenómenos</span>
+  <div class="nav-right">
+    <span class="timestamp" id="ts-label">Cargando...</span>
+    <a href="/" class="btn btn-secondary">📋 Monitoreo</a>
+    <button class="btn btn-primary" id="btn-actualizar">🔄 Actualizar</button>
+  </div>
+</nav>
+
+<!-- ── Loader ────────────────────────────────────────────────────── -->
+<div id="loader">⏳ Cargando datos...</div>
+
+<!-- ── Layout principal ──────────────────────────────────────────── -->
+<div class="main-layout">
+
+  <!-- Mapa Leaflet -->
+  <div id="mapa"></div>
+
+  <!-- Panel lateral -->
+  <aside class="side-panel">
+
+    <!-- Sección sismos -->
+    <div class="panel-section">
+      <div class="panel-title">
+        🌍 Sismos recientes
+        <span class="panel-badge" id="badge-sismos">0</span>
+      </div>
+      <div class="panel-list" id="lista-sismos">
+        <div class="no-data">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Sección ciclones -->
+    <div class="panel-section" style="max-height: 220px; flex: none;">
+      <div class="panel-title">
+        🌀 Ciclones activos
+        <span class="panel-badge" id="badge-ciclones">0</span>
+      </div>
+      <div class="panel-list" id="lista-ciclones">
+        <div class="no-data">Cargando...</div>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="mapa.js"></script>
+</body>
+</html>

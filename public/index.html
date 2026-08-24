@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CADENA — Monitoreo de Fenómenos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Barra de controles (no imprimible) ─────────────────────────── -->
+<div class="controls-bar no-print">
+  <div class="controls-left">
+    <span class="app-brand">🛡 CADENA — Monitoreo de Fenómenos</span>
+  </div>
+  <div class="controls-right">
+    <button id="btn-noticias" class="btn btn-noticias" title="Abre cada cuenta de Facebook y X de los 32 estados y extrae la publicación de hoy">
+      📰 Obtener noticias del día
+    </button>
+    <button id="btn-refresh" class="btn btn-primary" title="Sismos USGS + Ciclones NHC">
+      🔄 Sismos / Ciclones
+    </button>
+    <button id="btn-clear-auto" class="btn btn-secondary" title="Limpia datos automáticos">
+      🧹 Limpiar auto
+    </button>
+    <button id="btn-reset" class="btn btn-secondary" title="Restablece toda la tabla a Sin novedad">
+      ↩ Reiniciar tabla
+    </button>
+    <button id="btn-print" class="btn btn-success">
+      🖨 Imprimir / PDF
+    </button>
+    <a href="/mapa.html" class="btn btn-secondary" style="text-decoration:none">🗺 Mapa</a>
+    <div id="status-indicator" class="status-dot gray" title="Estado de la última actualización"></div>
+  </div>
+</div>
+
+<!-- ── Info actualización ─────────────────────────────────────────── -->
+<div id="update-banner" class="update-banner no-print" style="display:none"></div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ÁREA IMPRIMIBLE — replica el formato CADENA
+══════════════════════════════════════════════════════════════════ -->
+<div id="report">
+
+  <!-- Encabezado de cada página (print) -->
+  <div class="page-header-text">Monitoreo de Fenómenos</div>
+
+  <!-- Cabecera del reporte -->
+  <div class="report-header">
+    <div class="report-title-block">
+      <h2 class="report-org">CADENA</h2>
+      <h3 class="report-doc">MONITOREO DE FENÓMENOS</h3>
+    </div>
+    <div class="cadena-logo" aria-label="Logo CADENA">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 130" width="90">
+        <circle cx="55" cy="55" r="50" fill="none" stroke="#1C3A6B" stroke-width="2.5"/>
+        <!-- Hexagrama / Estrella de David -->
+        <polygon points="55,18 76,55 34,55" fill="none" stroke="#1C3A6B" stroke-width="2.8"/>
+        <polygon points="55,92 76,55 34,55" fill="none" stroke="#1C3A6B" stroke-width="2.8"/>
+        <text x="55" y="60" text-anchor="middle" font-family="Arial" font-size="6.5" font-weight="bold" fill="#1C3A6B">AYUDA HUMANITARIA EN</text>
+        <text x="55" y="69" text-anchor="middle" font-family="Arial" font-size="6.5" font-weight="bold" fill="#1C3A6B">DESASTRES Y CRISIS</text>
+        <text x="55" y="78" text-anchor="middle" font-family="Arial" font-size="6.5" font-weight="bold" fill="#1C3A6B">COMUNIDAD JUDÍA</text>
+        <text x="55" y="118" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#1C3A6B">CADENA</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Tabla de metadatos -->
+  <table class="meta-table">
+    <tr>
+      <th>Fecha</th>
+      <td><input type="text" id="meta-fecha" class="meta-input" placeholder="dd/mm/aaaa"></td>
+    </tr>
+    <tr>
+      <th>Hora</th>
+      <td><input type="text" id="meta-hora" class="meta-input" placeholder="HH:MM hrs"></td>
+    </tr>
+    <tr>
+      <th>Responsables</th>
+      <td><input type="text" id="meta-responsables" class="meta-input" value="Operaciones Humanitarias"></td>
+    </tr>
+  </table>
+
+  <!-- ── SECCIÓN ESTADOS ─────────────────────────────────────────── -->
+  <h4 class="section-title">UNIDADES ESTATALES DE PROTECCIÓN CIVIL</h4>
+  <table class="data-table" id="tabla-estados">
+    <thead>
+      <tr>
+        <th class="col-no">NO</th>
+        <th class="col-estado">ESTADO</th>
+        <th class="col-fuente">FUENTE</th>
+        <th class="col-eventos">EVENTOS RELEVANTES</th>
+        <th class="col-fenomeno">FENÓMENO</th>
+        <th class="col-intervencion">¿NECESITA<br>INTERVENCIÓN?</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-estados">
+      <!-- Generado por app.js -->
+    </tbody>
+  </table>
+
+  <!-- ── SECCIÓN DEPENDENCIAS FEDERALES ─────────────────────────── -->
+  <h4 class="section-title" style="margin-top:28px">DEPENDENCIAS FEDERALES</h4>
+  <table class="data-table" id="tabla-dependencias">
+    <thead>
+      <tr>
+        <th class="col-no">NO</th>
+        <th class="col-estado">DEPENDENCIA</th>
+        <th class="col-fuente">FUENTE</th>
+        <th class="col-eventos">EVENTOS RELEVANTES</th>
+        <th class="col-fenomeno">FENÓMENO</th>
+        <th class="col-intervencion">¿NECESITA<br>INTERVENCIÓN?</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-dependencias">
+      <!-- Generado por app.js -->
+    </tbody>
+  </table>
+
+  <!-- ── SECCIÓN NOTICIAS ───────────────────────────────────────── -->
+  <h4 class="section-title" style="margin-top:28px">NOTICIAS — MEDIOS DE COMUNICACIÓN</h4>
+  <table class="data-table" id="tabla-noticias">
+    <thead>
+      <tr>
+        <th class="col-no">NO</th>
+        <th class="col-estado">MEDIO</th>
+        <th class="col-fuente">FUENTE</th>
+        <th class="col-eventos">NOTA DEL DÍA</th>
+        <th class="col-fenomeno">FENÓMENO</th>
+        <th class="col-intervencion">¿NECESITA<br>INTERVENCIÓN?</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-noticias">
+      <!-- Generado por app.js -->
+    </tbody>
+  </table>
+
+  <div class="page-number-footer no-print-footer">Monitoreo de Fenómenos</div>
+</div><!-- /#report -->
+
+<script src="app.js"></script>
+</body>
+</html>
