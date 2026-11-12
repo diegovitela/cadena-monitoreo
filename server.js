@@ -159,6 +159,45 @@ function detectarFenomeno(texto) {
   return 'Por verificar';
 }
 
+// ─── Análisis con IA (Groq) — analiza un lote de posts de una vez ─
+async function analizarPostsConIA(posts) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return null;
+
+  const textos = posts.map((p, i) => `POST ${i + 1}: ${p.texto.slice(0, 350)}`).join('\n\n');
+
+  try {
+    const { data } = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            role: 'system',
+            content: `Eres un analizador de emergencias para México. Para cada POST determina si describe un desastre, emergencia o fenómeno natural EN CURSO o reciente (NO histórico, NO metafórico, NO político).
+Responde ÚNICAMENTE con un array JSON, un objeto por POST en orden:
+[{"esDesastre": true/false, "fenomeno": "tipo o NA"}]
+Tipos válidos: Geológico – Sismo, Geológico – Volcánico, Geológico – Deslave, Hidrometeorológico – Inundación, Hidrometeorológico – Ciclón/Tornado, Hidrometeorológico – Tormenta, Hidrometeorológico – Lluvias, Hidrometeorológico – Heladas, Químico-Tecnológico – Incendio forestal, Químico-Tecnológico – Incendio, Químico-Tecnológico – Explosión, Hidrometeorológico – Vientos fuertes, Hidrometeorológico – Frente frío, Sanitario-ecológico – Epidemia, NA`
+          },
+          { role: 'user', content: textos }
+        ],
+        temperature: 0,
+        max_tokens: 300
+      },
+      {
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        timeout: 12000
+      }
+    );
+    const content = data.choices[0].message.content.trim();
+    const match = content.match(/\[[\s\S]*\]/);
+    if (!match) return null;
+    return JSON.parse(match[0]);
+  } catch (_) {
+    return null; // si falla la IA, usa keywords como respaldo
+  }
+}
+
 // ─── Palabras clave para detectar si hay desastre/emergencia ─────
 const KEYWORDS_DESASTRE = [
   // ── Emojis de emergencia (no cambian con toLowerCase)
@@ -617,13 +656,25 @@ async function scrapeEstado(estado, browser) {
   for (const r of Object.values(resultados)) {
     if (!r || !r.ok) continue;
     const postsHoy = r.posts.filter(p => p.esHoy !== false);
-    for (const post of postsHoy) {
-      if (contieneDesastre(post.texto)) {
-        eventosEncontrados.push(`[${r.fuente}]\n${post.texto}`);
-        const fen = detectarFenomeno(post.texto);
-        if (fen && fen !== 'NA' && fen !== 'Por verificar') fenomenosSet.add(fen);
+    if (!postsHoy.length) continue;
+
+    // IA analiza el lote completo; si falla usa keywords como respaldo
+    const iaResultados = await analizarPostsConIA(postsHoy);
+
+    postsHoy.forEach((post, i) => {
+      let esDesastre, fenomeno;
+      if (iaResultados && iaResultados[i]) {
+        esDesastre = iaResultados[i].esDesastre;
+        fenomeno   = iaResultados[i].fenomeno;
+      } else {
+        esDesastre = contieneDesastre(post.texto);
+        fenomeno   = detectarFenomeno(post.texto);
       }
-    }
+      if (esDesastre) {
+        eventosEncontrados.push(`[${r.fuente}]\n${post.texto}`);
+        if (fenomeno && fenomeno !== 'NA' && fenomeno !== 'Por verificar') fenomenosSet.add(fenomeno);
+      }
+    });
   }
 
   if (eventosEncontrados.length > 0) {
