@@ -497,17 +497,40 @@ async function scrapeXPuppeteer(username, browser) {
 }
 
 // ─── 3. FACEBOOK mbasic (sin Puppeteer, más rápido) ──────────────
+const FB_USER_AGENTS = [
+  'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (Linux; Android 12; Samsung Galaxy S22) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.136 Mobile Safari/537.36',
+  'Mozilla/5.0 (Linux; Android 11; Redmi Note 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
+];
+
 async function scrapeFBMbasic(fbUrl) {
   const pageName = fbUrl.replace(/.*facebook\.com\//, '').split('?')[0];
-  try {
-    const { data } = await axios.get(`https://mbasic.facebook.com/${pageName}`, {
-      timeout: 12000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'es-MX,es;q=0.9'
-      }
-    });
+
+  for (const ua of FB_USER_AGENTS) {
+    try {
+      // Paso 1: obtener cookies de sesión anónima
+      let cookies = '';
+      try {
+        const home = await axios.get('https://mbasic.facebook.com/', {
+          timeout: 7000,
+          headers: { 'User-Agent': ua, 'Accept': 'text/html', 'Accept-Language': 'es-MX,es;q=0.9' }
+        });
+        cookies = (home.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+      } catch (_) {}
+
+      // Paso 2: acceder a la página con esas cookies
+      const { data } = await axios.get(`https://mbasic.facebook.com/${pageName}`, {
+        timeout: 12000,
+        headers: {
+          'User-Agent': ua,
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'es-MX,es;q=0.9',
+          'Cookie': cookies,
+          'Referer': 'https://mbasic.facebook.com/',
+          'Connection': 'keep-alive'
+        }
+      });
 
     const $ = cheerio.load(data);
 
@@ -518,7 +541,7 @@ async function scrapeFBMbasic(fbUrl) {
       data.includes('id="loginform"') ||
       data.includes('name="login"') ||
       (data.includes('/login') && $('article, [data-ft]').length === 0);
-    if (esLoginWall) return { ok: false, razon: 'Requiere login (mbasic)' };
+    if (esLoginWall) continue;
 
     const posts = [];
 
@@ -538,11 +561,10 @@ async function scrapeFBMbasic(fbUrl) {
       }
     });
 
-    if (posts.length) return { ok: true, fuente: 'Facebook', posts: posts.slice(0, 10) };
-    return { ok: false, razon: 'Sin posts visibles en mbasic' };
-  } catch (err) {
-    return { ok: false, razon: err.message.slice(0, 80) };
+      if (posts.length) return { ok: true, fuente: 'Facebook', posts: posts.slice(0, 10) };
+    } catch (_) {}
   }
+  return { ok: false, razon: 'Requiere login o sin contenido visible' };
 }
 
 // ─── 4. FACEBOOK con Puppeteer ────────────────────────────────────
