@@ -659,12 +659,10 @@ async function scrapeEstado(estado, browser) {
   for (const r of Object.values(resultados)) {
     if (!r || !r.ok) continue;
     const postsHoy = r.posts.filter(p => p.esHoy !== false);
-    console.log(`[DEBUG] ${estado.nombre||estado.id} | ${r.fuente} | total:${r.posts.length} hoy:${postsHoy.length} | 1er texto: ${(postsHoy[0]||r.posts[0])?.texto?.slice(0,120) || 'vacío'}`);
     if (!postsHoy.length) continue;
 
     // IA analiza el lote completo; si falla usa keywords como respaldo
     const iaResultados = await analizarPostsConIA(postsHoy);
-    console.log(`[IA RESP] ${estado.nombre||estado.id}: ${JSON.stringify(iaResultados)}`);
     if (iaResultados) {
       console.log(`[IA] ${estado.nombre || estado.id} — analizó ${postsHoy.length} posts con Groq`);
     } else {
