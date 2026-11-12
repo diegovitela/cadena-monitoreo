@@ -16,6 +16,7 @@ const CHROME_PATH = process.env.CHROME_PATH
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+console.log('[CONFIG] GROQ_API_KEY:', process.env.GROQ_API_KEY ? `configurada (${process.env.GROQ_API_KEY.slice(0,8)}...)` : 'NO ENCONTRADA');
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
