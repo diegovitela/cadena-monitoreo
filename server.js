@@ -660,6 +660,11 @@ async function scrapeEstado(estado, browser) {
 
     // IA analiza el lote completo; si falla usa keywords como respaldo
     const iaResultados = await analizarPostsConIA(postsHoy);
+    if (iaResultados) {
+      console.log(`[IA] ${estado.nombre || estado.id} — analizó ${postsHoy.length} posts con Groq`);
+    } else {
+      console.log(`[KEYWORDS] ${estado.nombre || estado.id} — Groq no disponible, usando palabras clave`);
+    }
 
     postsHoy.forEach((post, i) => {
       let esDesastre, fenomeno;
