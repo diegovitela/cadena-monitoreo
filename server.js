@@ -16,7 +16,6 @@ const CHROME_PATH = process.env.CHROME_PATH
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
-console.log('[CONFIG] GROQ_API_KEY:', process.env.GROQ_API_KEY ? `configurada (${process.env.GROQ_API_KEY.slice(0,8)}...)` : 'NO ENCONTRADA');
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -163,7 +162,6 @@ function detectarFenomeno(texto) {
 // ─── Análisis con IA (Groq) — analiza un lote de posts de una vez ─
 async function analizarPostsConIA(posts) {
   const apiKey = process.env.GROQ_API_KEY;
-  console.log(`[IA] función llamada — apiKey: ${apiKey ? 'ok' : 'null'} — posts: ${posts.length}`);
   if (!apiKey) return null;
 
   const textos = posts.map((p, i) => `POST ${i + 1}: ${p.texto.slice(0, 350)}`).join('\n\n');
@@ -192,7 +190,6 @@ Tipos válidos: Geológico – Sismo, Geológico – Volcánico, Geológico – 
       }
     );
     const content = data.choices[0].message.content.trim();
-    console.log('[IA] respuesta Groq (primeros 200 chars):', content.slice(0, 200));
     // Limpiar bloques markdown si el modelo los incluyó
     const cleaned = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
     const match = cleaned.match(/\[[\s\S]*\]/);
