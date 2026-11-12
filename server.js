@@ -664,6 +664,7 @@ async function scrapeEstado(estado, browser) {
 
     // IA analiza el lote completo; si falla usa keywords como respaldo
     const iaResultados = await analizarPostsConIA(postsHoy);
+    console.log(`[IA RESP] ${estado.nombre||estado.id}: ${JSON.stringify(iaResultados)}`);
     if (iaResultados) {
       console.log(`[IA] ${estado.nombre || estado.id} — analizó ${postsHoy.length} posts con Groq`);
     } else {
