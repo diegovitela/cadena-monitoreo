@@ -192,9 +192,12 @@ Tipos válidos: Geológico – Sismo, Geológico – Volcánico, Geológico – 
       }
     );
     const content = data.choices[0].message.content.trim();
-    const match = content.match(/\[[\s\S]*\]/);
-    if (!match) { console.log('[IA] sin JSON array en respuesta:', content.slice(0, 150)); return null; }
-    return JSON.parse(match[0]);
+    console.log('[IA] respuesta Groq (primeros 200 chars):', content.slice(0, 200));
+    // Limpiar bloques markdown si el modelo los incluyó
+    const cleaned = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (!match) { console.log('[IA] sin JSON array en respuesta limpia:', cleaned.slice(0, 150)); return null; }
+    try { return JSON.parse(match[0]); } catch (e) { console.log('[IA] JSON parse error:', e.message); return null; }
   } catch (err) {
     console.log('[IA ERROR]', err.response?.status, err.response?.data?.error?.message || err.message);
     return null; // si falla la IA, usa keywords como respaldo
