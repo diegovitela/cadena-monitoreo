@@ -163,6 +163,7 @@ function detectarFenomeno(texto) {
 // ─── Análisis con IA (Groq) — analiza un lote de posts de una vez ─
 async function analizarPostsConIA(posts) {
   const apiKey = process.env.GROQ_API_KEY;
+  console.log(`[IA] función llamada — apiKey: ${apiKey ? 'ok' : 'null'} — posts: ${posts.length}`);
   if (!apiKey) return null;
 
   const textos = posts.map((p, i) => `POST ${i + 1}: ${p.texto.slice(0, 350)}`).join('\n\n');
@@ -192,7 +193,7 @@ Tipos válidos: Geológico – Sismo, Geológico – Volcánico, Geológico – 
     );
     const content = data.choices[0].message.content.trim();
     const match = content.match(/\[[\s\S]*\]/);
-    if (!match) return null;
+    if (!match) { console.log('[IA] sin JSON array en respuesta:', content.slice(0, 150)); return null; }
     return JSON.parse(match[0]);
   } catch (err) {
     console.log('[IA ERROR]', err.response?.status, err.response?.data?.error?.message || err.message);
