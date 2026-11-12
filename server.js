@@ -680,9 +680,10 @@ async function scrapeEstado(estado, browser) {
         esDesastre = contieneDesastre(post.texto);
         fenomeno   = detectarFenomeno(post.texto);
       }
-      if (esDesastre) {
+      const fenomenoValido = fenomeno && fenomeno !== 'NA' && fenomeno !== 'Por verificar';
+      if (esDesastre || fenomenoValido) {
         eventosEncontrados.push(`[${r.fuente}]\n${post.texto}`);
-        if (fenomeno && fenomeno !== 'NA' && fenomeno !== 'Por verificar') fenomenosSet.add(fenomeno);
+        if (fenomenoValido) fenomenosSet.add(fenomeno);
       }
     });
   }
