@@ -172,7 +172,7 @@ async function analizarPostsConIA(posts) {
     const { data } = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
-        model: 'llama3-8b-8192',
+        model: 'openai/gpt-oss-20b',
         messages: [
           {
             role: 'system',
