@@ -194,7 +194,8 @@ Tipos válidos: Geológico – Sismo, Geológico – Volcánico, Geológico – 
     const match = content.match(/\[[\s\S]*\]/);
     if (!match) return null;
     return JSON.parse(match[0]);
-  } catch (_) {
+  } catch (err) {
+    console.log('[IA ERROR]', err.response?.status, err.response?.data?.error?.message || err.message);
     return null; // si falla la IA, usa keywords como respaldo
   }
 }
