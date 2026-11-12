@@ -184,7 +184,7 @@ Tipos válidos: Geológico – Sismo, Geológico – Volcánico, Geológico – 
           { role: 'user', content: textos }
         ],
         temperature: 0,
-        max_tokens: 300
+        max_tokens: 800
       },
       {
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
