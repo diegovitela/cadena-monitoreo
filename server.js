@@ -174,7 +174,7 @@ async function analizarPostsConIA(posts) {
         messages: [
           {
             role: 'system',
-            content: `Eres un analizador de emergencias para México. Para cada POST determina si describe un desastre, emergencia o fenómeno natural EN CURSO o reciente (NO histórico, NO metafórico, NO político).
+            content: `Eres un analizador de protección civil para México. Para cada POST determina si describe o anuncia un desastre, emergencia, fenómeno natural, aviso meteorológico, vigilancia, alerta preventiva o condición de riesgo que requiera atención (aunque sea preventiva). Incluye: lluvias esperadas, frentes fríos, vigilancia meteorológica, alertas tempranas, sismos recientes, actividad volcánica, inundaciones, incendios, etc. Solo excluye posts claramente irrelevantes (cursos, eventos culturales, noticias pasadas históricas, contenido político sin riesgo).
 Responde ÚNICAMENTE con un array JSON, un objeto por POST en orden:
 [{"esDesastre": true/false, "fenomeno": "tipo o NA"}]
 Tipos válidos: Geológico – Sismo, Geológico – Volcánico, Geológico – Deslave, Hidrometeorológico – Inundación, Hidrometeorológico – Ciclón/Tornado, Hidrometeorológico – Tormenta, Hidrometeorológico – Lluvias, Hidrometeorológico – Heladas, Químico-Tecnológico – Incendio forestal, Químico-Tecnológico – Incendio, Químico-Tecnológico – Explosión, Hidrometeorológico – Vientos fuertes, Hidrometeorológico – Frente frío, Sanitario-ecológico – Epidemia, NA`
