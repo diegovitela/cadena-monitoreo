@@ -122,9 +122,17 @@ function plotSismos(sismos) {
           ${s.url ? `<br><a href="${s.url}" target="_blank" rel="noopener"
             style="color:#1565c0;font-weight:600;">Ver en USGS ↗</a>` : ''}
         </div>
-        <button onclick="verNoticiasEvento(this,'${queryS.replace(/'/g,"\\'")}');"
+        <button
+          data-tipo="sismo"
+          data-mag="${s.mag}"
+          data-lugar="${(s.place||'').replace(/"/g,'&quot;')}"
+          data-lat="${s.lat}"
+          data-lon="${s.lon}"
+          data-depth="${s.depth}"
+          data-query="${queryS.replace(/"/g,'&quot;')}"
+          onclick="analizarEvento(this)"
           style="margin-top:10px;width:100%;padding:6px;background:#1C3A6B;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">
-          📰 Ver noticias
+          🤖 Analizar con IA
         </button>
         <div style="margin-top:4px;"></div>
       </div>
@@ -222,9 +230,17 @@ function plotCiclones(ciclones) {
         ${c.url ? `<div style="margin-top:6px;font-size:11px;">
           <a href="${c.url}" target="_blank" rel="noopener"
             style="color:#1565c0;font-weight:600;">Ver asesoría NHC ↗</a></div>` : ''}
-        <button onclick="verNoticiasEvento(this,'${queryC.replace(/'/g,"\\'")}');"
+        <button
+          data-tipo="ciclon"
+          data-name="${c.name.replace(/"/g,'&quot;')}"
+          data-tipolabel="${tipoLabel.replace(/"/g,'&quot;')}"
+          data-winds="${c.winds}"
+          data-lat="${c.lat}"
+          data-lon="${c.lon}"
+          data-query="${queryC.replace(/"/g,'&quot;')}"
+          onclick="analizarEvento(this)"
           style="margin-top:10px;width:100%;padding:6px;background:#1C3A6B;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">
-          📰 Ver noticias
+          🤖 Analizar con IA
         </button>
         <div style="margin-top:4px;"></div>
       </div>
@@ -402,43 +418,77 @@ async function actualizarMapa() {
   }
 }
 
-// ─── Noticias de un evento (Google News) ──────────────────────────
-window.verNoticiasEvento = async function (btn, query) {
+// ─── Analizar evento con IA (descripción + noticias) ─────────────
+window.analizarEvento = async function (btn) {
   const contenedor = btn.nextElementSibling;
   btn.disabled = true;
-  btn.textContent = '⏳ Buscando...';
+  btn.textContent = '⏳ Analizando...';
+
+  const payload = {
+    tipo:      btn.dataset.tipo,
+    mag:       btn.dataset.mag,
+    lugar:     btn.dataset.lugar,
+    lat:       btn.dataset.lat,
+    lon:       btn.dataset.lon,
+    depth:     btn.dataset.depth,
+    name:      btn.dataset.name,
+    tipoLabel: btn.dataset.tipolabel,
+    winds:     btn.dataset.winds,
+    query:     btn.dataset.query
+  };
 
   try {
-    const res  = await fetch(`/api/noticias-evento?q=${encodeURIComponent(query)}`);
+    const res  = await fetch('/api/analizar-evento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
     const data = await res.json();
 
-    if (!data.ok || !data.noticias.length) {
-      contenedor.innerHTML = '<div style="color:#888;font-size:11px;padding:8px 0;text-align:center;">Sin noticias encontradas</div>';
-    } else {
-      contenedor.innerHTML = data.noticias.map(n => {
-        const fecha = n.fecha ? new Date(n.fecha).toLocaleString('es-MX', {
-          day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'
-        }) : '';
-        return `
-          <div style="padding:7px 0;border-top:1px solid #e8edf2;">
-            <div style="font-size:10.5px;font-weight:700;color:#1C3A6B;text-transform:uppercase;letter-spacing:.3px;">${n.fuente}</div>
-            <a href="${n.link}" target="_blank" rel="noopener"
-               style="font-size:11.5px;color:#1a1a1a;text-decoration:none;line-height:1.45;display:block;margin-top:2px;font-weight:600;">
-              ${n.titulo}
-            </a>
-            ${n.resumen ? `<div style="font-size:10.5px;color:#607d8b;margin-top:3px;line-height:1.4;">${n.resumen}</div>` : ''}
-            ${fecha ? `<div style="font-size:10px;color:#90a4ae;margin-top:3px;">${fecha}</div>` : ''}
-          </div>`;
-      }).join('');
+    let html = '';
+
+    if (data.descripcion) {
+      html += `
+        <div style="background:#e8f4fd;border-left:3px solid #1C3A6B;padding:8px 10px;margin-bottom:8px;border-radius:0 4px 4px 0;">
+          <div style="font-size:10px;font-weight:700;color:#1C3A6B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">🤖 Análisis IA</div>
+          <div style="font-size:11.5px;color:#1a1a1a;line-height:1.5;">${data.descripcion}</div>
+        </div>`;
     }
 
+    if (data.resumenNoticias) {
+      html += `
+        <div style="font-size:11px;color:#546e7a;font-style:italic;margin-bottom:8px;padding:0 2px;">
+          📡 ${data.resumenNoticias}
+        </div>`;
+    }
+
+    if (data.noticias && data.noticias.length) {
+      html += `<div style="font-size:10.5px;font-weight:700;color:#333;margin-bottom:4px;border-top:1px solid #ddd;padding-top:6px;">Noticias relacionadas</div>`;
+      html += data.noticias.map(n => {
+        const fecha = n.fecha ? new Date(n.fecha).toLocaleString('es-MX', {
+          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+        }) : '';
+        return `
+          <div style="padding:6px 0;border-top:1px solid #e8edf2;">
+            <div style="font-size:10px;font-weight:700;color:#1C3A6B;text-transform:uppercase;letter-spacing:.3px;">${n.fuente}</div>
+            <a href="${n.link}" target="_blank" rel="noopener"
+               style="font-size:11px;color:#1a1a1a;text-decoration:none;line-height:1.45;display:block;margin-top:2px;font-weight:600;">
+              ${n.titulo}
+            </a>
+            ${fecha ? `<div style="font-size:10px;color:#90a4ae;margin-top:2px;">${fecha}</div>` : ''}
+          </div>`;
+      }).join('');
+    } else if (!data.descripcion) {
+      html = '<div style="color:#888;font-size:11px;padding:8px 0;text-align:center;">Sin información disponible</div>';
+    }
+
+    contenedor.innerHTML = html;
     btn.style.display = 'none';
-    // Forzar refresco del tamaño del popup
     setTimeout(() => mapa.invalidateSize(), 50);
   } catch (_) {
-    contenedor.innerHTML = '<div style="color:#c00;font-size:11px;padding:6px 0;">Error al cargar noticias</div>';
+    contenedor.innerHTML = '<div style="color:#c00;font-size:11px;padding:6px 0;">Error al analizar el evento</div>';
     btn.disabled = false;
-    btn.textContent = '📰 Ver noticias';
+    btn.textContent = '🤖 Analizar con IA';
   }
 };
 

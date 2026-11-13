@@ -1039,4 +1039,95 @@ app.get('/api/noticias-evento', async (req, res) => {
   }
 });
 
+// ─── API: Analizar evento con IA (descripción + noticias) ─────────
+app.post('/api/analizar-evento', async (req, res) => {
+  const { tipo, mag, lugar, lat, lon, depth, name, tipoLabel, winds, query } = req.body;
+  if (!query) return res.json({ ok: false, descripcion: null, resumenNoticias: null, noticias: [] });
+
+  const cacheKey = `analizar-evento:${query}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  // 1. Obtener noticias de Google News
+  let noticias = [];
+  try {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=es-419&gl=MX&ceid=MX%3Aes-419`;
+    const { data: xmlData } = await axios.get(url, {
+      timeout: 10000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CADENA-monitor/2.0)' }
+    });
+    const parsed = await xml2js.parseStringPromise(xmlData, { explicitArray: false });
+    const rawItems = parsed?.rss?.channel?.item || [];
+    const items = Array.isArray(rawItems) ? rawItems : [rawItems];
+    const vistos = new Set();
+    for (const item of items) {
+      const fuente = (item.source?._ || item.source || 'Desconocido').trim();
+      if (vistos.has(fuente)) continue;
+      vistos.add(fuente);
+      noticias.push({
+        titulo:  (item.title || '').replace(/\s*-\s*[^-]+$/, '').trim(),
+        fuente,
+        fecha:   item.pubDate || '',
+        link:    item.link || '',
+        resumen: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 200)
+      });
+      if (noticias.length >= 5) break;
+    }
+  } catch (_) {}
+
+  // 2. Análisis con IA (Groq)
+  let descripcion = null;
+  let resumenNoticias = null;
+  const apiKey = process.env.GROQ_API_KEY;
+
+  if (apiKey) {
+    try {
+      const eventoInfo = tipo === 'sismo'
+        ? `Sismo M${mag} — ${lugar}\nProfundidad: ${depth} km\nCoordenadas: ${lat}°N, ${lon}°O`
+        : `${tipoLabel} ${name}\nVientos máximos: ${winds} nudos\nPosición: ${lat}°N, ${lon}°O`;
+
+      const noticiasTexto = noticias.length
+        ? noticias.map((n, i) => `${i + 1}. [${n.fuente}] ${n.titulo}`).join('\n')
+        : 'Sin noticias disponibles.';
+
+      const { data } = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          model: 'openai/gpt-oss-20b',
+          messages: [
+            {
+              role: 'system',
+              content: 'Eres un analista de riesgos y protección civil para México. Responde siempre en español con análisis breves y concretos.'
+            },
+            {
+              role: 'user',
+              content: `Analiza este fenómeno y resume las noticias. Responde SOLO con JSON válido sin texto extra:\n\nEVENTO:\n${eventoInfo}\n\nNOTICIAS:\n${noticiasTexto}\n\nFormato:\n{"descripcion":"2-3 oraciones técnicas sobre el evento: qué es, nivel de riesgo para la población y zonas posiblemente afectadas","resumenNoticias":"1 oración resumiendo lo que reportan los medios, o null si no hay noticias relevantes"}`
+            }
+          ],
+          temperature: 0.2,
+          max_tokens: 350
+        },
+        {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          timeout: 15000
+        }
+      );
+      const content = data.choices[0].message.content.trim();
+      const cleaned = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        descripcion      = parsed.descripcion      || null;
+        resumenNoticias  = parsed.resumenNoticias  || null;
+      }
+    } catch (err) {
+      console.log('[IA analizar-evento ERROR]', err.response?.status, err.message);
+    }
+  }
+
+  const resultado = { ok: true, descripcion, resumenNoticias, noticias };
+  setCache(cacheKey, resultado);
+  res.json(resultado);
+});
+
 app.listen(PORT, () => console.log(`\n✅  CADENA Monitoreo — http://localhost:${PORT}\n`));
